@@ -52,6 +52,11 @@ export default function Admin({ onLogout, onSwitchToUser }: Props) {
   const [chatMessages, setChatMessages] = useState<SupportMessage[]>([]);
   const [adminReply, setAdminReply] = useState('');
   const [loading, setLoading] = useState(true);
+  const [declineModal, setDeclineModal] = useState<{ show: boolean; tx: Transaction | null; reason: string }>({
+    show: false,
+    tx: null,
+    reason: ''
+  });
 
   // Form states
   const [newSignal, setNewSignal] = useState({ value: '', time: '', date: '' });
@@ -146,14 +151,36 @@ export default function Admin({ onLogout, onSwitchToUser }: Props) {
     }
   };
 
-  const handleDeclineTx = async (tx: Transaction) => {
-    const reason = prompt('Enter decline reason:');
-    if (reason) {
+  const handleDeclineTx = async () => {
+    if (declineModal.tx && declineModal.reason) {
       try {
-        await updateDoc(doc(db, 'transactions', tx.id), { status: 'declined', reason });
+        await updateDoc(doc(db, 'transactions', declineModal.tx.id), { 
+          status: 'declined', 
+          reason: declineModal.reason 
+        });
+        setDeclineModal({ show: false, tx: null, reason: '' });
       } catch (err) {
         console.error(err);
       }
+    }
+  };
+
+  const handleDeleteUser = async (uid: string) => {
+    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      try {
+        await deleteDoc(doc(db, 'users', uid));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  const handleBlockUser = async (uid: string, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === 'blocked' ? 'inactive' : 'blocked';
+      await updateDoc(doc(db, 'users', uid), { status: newStatus });
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -274,7 +301,7 @@ export default function Admin({ onLogout, onSwitchToUser }: Props) {
                   <StatCard label="Total Users" value={users.length} icon={Users} color="blue" />
                   <StatCard label="Active Members" value={users.filter(u => u.status === 'active').length} icon={ShieldCheck} color="green" />
                   <StatCard label="Pending Payments" value={transactions.filter(t => t.status === 'pending').length} icon={Clock} color="yellow" />
-                  <StatCard label="Total Revenue" value={transactions.filter(t => t.status === 'success').length * 1500 + ' BDT'} icon={CreditCard} color="purple" />
+                  <StatCard label="Total Revenue" value={transactions.filter(t => t.status === 'success').reduce((acc, t) => acc + t.amount, 0) + ' BDT'} icon={CreditCard} color="purple" />
                 </div>
               </div>
             )}
@@ -290,6 +317,7 @@ export default function Admin({ onLogout, onSwitchToUser }: Props) {
                         <th className="p-4">Phone</th>
                         <th className="p-4">Status</th>
                         <th className="p-4">Role</th>
+                        <th className="p-4 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -306,11 +334,33 @@ export default function Admin({ onLogout, onSwitchToUser }: Props) {
                           </td>
                           <td className="p-4 text-slate-400 text-sm font-bold">{u.phone}</td>
                           <td className="p-4">
-                            <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-full ${u.status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                            <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-full ${
+                              u.status === 'active' ? 'bg-green-500/10 text-green-500' : 
+                              u.status === 'blocked' ? 'bg-red-600/10 text-red-500' :
+                              'bg-yellow-500/10 text-yellow-500'
+                            }`}>
                               {u.status}
                             </span>
                           </td>
                           <td className="p-4 text-slate-400 text-sm font-bold uppercase">{u.role}</td>
+                          <td className="p-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button 
+                                onClick={() => handleBlockUser(u.uid, u.status)}
+                                className={`p-2 rounded-lg transition-colors ${u.status === 'blocked' ? 'text-green-500 hover:bg-green-500/10' : 'text-yellow-500 hover:bg-yellow-500/10'}`}
+                                title={u.status === 'blocked' ? 'Unblock User' : 'Block User'}
+                              >
+                                {u.status === 'blocked' ? <ShieldCheck className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteUser(u.uid)}
+                                className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                title="Delete User"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -345,7 +395,7 @@ export default function Admin({ onLogout, onSwitchToUser }: Props) {
                               <CheckCircle2 className="w-4 h-4" /> Approve
                             </button>
                             <button 
-                              onClick={() => handleDeclineTx(tx)}
+                              onClick={() => setDeclineModal({ show: true, tx, reason: '' })}
                               className="bg-red-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-red-500 transition-all flex items-center gap-2"
                             >
                               <XCircle className="w-4 h-4" /> Decline
@@ -475,7 +525,7 @@ export default function Admin({ onLogout, onSwitchToUser }: Props) {
             )}
 
             {activeTab === 'support' && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-12rem)]">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-8rem)]">
                 {/* Chat List */}
                 <div className="bg-slate-900/40 rounded-3xl border border-white/5 overflow-hidden flex flex-col">
                   <div className="p-6 border-b border-white/5 bg-white/5">
@@ -571,6 +621,53 @@ export default function Admin({ onLogout, onSwitchToUser }: Props) {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {/* Decline Reason Modal */}
+      <AnimatePresence>
+        {declineModal.show && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+              onClick={() => setDeclineModal({ show: false, tx: null, reason: '' })}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-slate-900 border border-white/10 p-8 rounded-3xl shadow-2xl max-w-md w-full relative z-10"
+            >
+              <h3 className="text-2xl font-black text-white mb-4 uppercase tracking-tight">Decline Payment</h3>
+              <p className="text-slate-400 text-sm mb-6">Please provide a reason for declining this payment request.</p>
+              
+              <textarea
+                value={declineModal.reason}
+                onChange={e => setDeclineModal({ ...declineModal, reason: e.target.value })}
+                placeholder="e.g. Invalid Transaction ID"
+                className="w-full bg-slate-800 border border-white/5 rounded-xl p-4 text-white min-h-[120px] mb-6 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+              />
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeclineModal({ show: false, tx: null, reason: '' })}
+                  className="flex-1 bg-slate-800 text-white py-4 rounded-xl font-bold hover:bg-slate-700 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeclineTx}
+                  disabled={!declineModal.reason.trim()}
+                  className="flex-1 bg-red-600 text-white py-4 rounded-xl font-bold hover:bg-red-500 transition-all disabled:opacity-50"
+                >
+                  Decline
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

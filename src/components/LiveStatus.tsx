@@ -121,7 +121,7 @@ export default function LiveStatus() {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-green-500 font-black">+1500 BDT</p>
+                <p className="text-[10px] text-green-500 font-black">+1199 BDT</p>
                 <p className="text-[8px] text-slate-600 font-bold uppercase">Success</p>
               </div>
             </div>

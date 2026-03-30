@@ -63,7 +63,7 @@ export default function TransactionHistory({ user }: Props) {
         <div className="text-right">
           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Total Paid</p>
           <p className="text-xl font-black text-white">
-            {transactions.filter(t => t.status === 'success').length * 1500} BDT
+            {transactions.filter(t => t.status === 'success').reduce((acc, t) => acc + t.amount, 0)} BDT
           </p>
         </div>
       </div>

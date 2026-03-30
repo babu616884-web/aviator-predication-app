@@ -1,5 +1,5 @@
 export type UserRole = 'user' | 'admin';
-export type UserStatus = 'active' | 'inactive';
+export type UserStatus = 'active' | 'inactive' | 'blocked';
 export type TransactionStatus = 'pending' | 'success' | 'declined';
 
 export interface User {

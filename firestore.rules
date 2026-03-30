@@ -16,10 +16,15 @@ service cloud.firestore {
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
          request.auth.token.email == "mahamudurrahman778@gmail.com");
     }
+    function isNotBlocked() {
+      return isAuthenticated() && 
+        (request.auth.token.email == "mahamudurrahman778@gmail.com" || 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status != 'blocked');
+    }
     function isValidUser(data) {
       return data.keys().hasAll(['uid', 'email', 'name', 'status', 'role']) &&
              data.uid is string && data.email is string && data.name is string &&
-             data.status in ['active', 'inactive'] &&
+             data.status in ['active', 'inactive', 'blocked'] &&
              data.role in ['user', 'admin'];
     }
     function isValidTransaction(data) {
@@ -39,19 +44,20 @@ service cloud.firestore {
         (request.resource.data.role == 'admin' && request.auth.token.email == "mahamudurrahman778@gmail.com")
       );
       allow update: if isAuthenticated() && (
-        (isOwner(uid) && request.resource.data.role == resource.data.role && isValidUser(request.resource.data)) ||
+        (isOwner(uid) && isNotBlocked() && request.resource.data.role == resource.data.role && isValidUser(request.resource.data)) ||
         isAdmin()
       );
+      allow delete: if isAdmin();
     }
 
     match /transactions/{id} {
       allow read: if isAuthenticated() && (request.auth.uid == resource.data.uid || isAdmin());
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.uid && isValidTransaction(request.resource.data);
+      allow create: if isNotBlocked() && request.auth.uid == request.resource.data.uid && isValidTransaction(request.resource.data);
       allow update: if isAdmin();
     }
 
     match /vip_signals/{id} {
-      allow read: if isAuthenticated();
+      allow read: if isNotBlocked();
       allow write: if isAdmin();
     }
 
@@ -61,17 +67,17 @@ service cloud.firestore {
     }
 
     match /stats/global {
-      allow read: if isAuthenticated();
+      allow read: if isNotBlocked();
       allow write: if isAdmin();
     }
 
     match /support_chats/{userId} {
       allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
-      allow write: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow write: if isNotBlocked() && (isOwner(userId) || isAdmin());
 
       match /messages/{messageId} {
         allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
-        allow create: if isAuthenticated() && (isOwner(userId) || isAdmin());
+        allow create: if isNotBlocked() && (isOwner(userId) || isAdmin());
       }
     }
   }

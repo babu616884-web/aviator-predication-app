@@ -3,6 +3,7 @@ import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { doc, onSnapshot, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { User, UserRole, UserStatus, Notice } from './types';
+import { ShieldAlert } from 'lucide-react';
 import Splash from './components/Splash';
 import Auth from './components/Auth';
 import Payment from './components/Payment';
@@ -14,7 +15,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [view, setView] = useState<'splash' | 'auth' | 'payment' | 'home' | 'admin'>('splash');
+  const [view, setView] = useState<'splash' | 'auth' | 'payment' | 'home' | 'admin' | 'blocked'>('splash');
   const [notice, setNotice] = useState<Notice | null>(null);
 
   useEffect(() => {
@@ -27,6 +28,8 @@ export default function App() {
           setUser(userData);
           if (userData.role === 'admin' && fbUser.email === 'mahamudurrahman778@gmail.com') {
             setView('admin');
+          } else if (userData.status === 'blocked') {
+            setView('blocked');
           } else if (userData.status === 'inactive') {
             setView('payment');
           } else {
@@ -54,17 +57,20 @@ export default function App() {
           setUser(userData);
           
           // Determine correct view based on user data
-          let targetView: 'home' | 'admin' | 'payment' = 'home';
+          let targetView: 'home' | 'admin' | 'payment' | 'blocked' = 'home';
           if (userData.role === 'admin' && firebaseUser.email === 'mahamudurrahman778@gmail.com') {
             targetView = 'admin';
+          } else if (userData.status === 'blocked') {
+            targetView = 'blocked';
           } else if (userData.status === 'inactive') {
             targetView = 'payment';
           }
 
           // Only update view if it's a necessary transition (e.g. from auth/payment/splash)
           // or if the status changed while in home/admin
-          if (view === 'auth' || view === 'payment' || view === 'splash' || 
+          if (view === 'auth' || view === 'payment' || view === 'splash' || view === 'blocked' || 
               (view === 'home' && targetView === 'payment') ||
+              (view === 'home' && targetView === 'blocked') ||
               (view === 'payment' && targetView === 'home')) {
             setView(targetView);
           }
@@ -129,6 +135,28 @@ export default function App() {
               onLogout={() => auth.signOut()} 
               onSwitchToUser={() => setView('home')}
             />
+          </motion.div>
+        )}
+        {view === 'blocked' && (
+          <motion.div key="blocked" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="min-h-screen flex items-center justify-center p-6 bg-slate-950">
+              <div className="bg-slate-900/40 backdrop-blur-xl p-10 rounded-3xl shadow-2xl max-w-md w-full border border-red-500/20 text-center">
+                <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <ShieldAlert className="w-12 h-12 text-red-500" />
+                </div>
+                <h2 className="text-3xl font-black text-white mb-4">Account Blocked</h2>
+                <p className="text-slate-400 mb-8 leading-relaxed">
+                  Your account has been suspended by the administrator for violating our terms of service. 
+                  Please contact support if you believe this is a mistake.
+                </p>
+                <button
+                  onClick={() => auth.signOut()}
+                  className="w-full bg-red-600 text-white py-4 rounded-2xl font-bold hover:bg-red-500 transition-colors shadow-lg shadow-red-600/20"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

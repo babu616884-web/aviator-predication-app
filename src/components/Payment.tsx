@@ -25,7 +25,7 @@ export default function Payment({ user, onLogout }: Props) {
     try {
       const newTransaction: Omit<Transaction, 'id'> = {
         uid: user.uid,
-        amount: 1500,
+        amount: 1199,
         transactionId,
         paymentNumber,
         timestamp: new Date().toISOString(),
@@ -60,7 +60,7 @@ export default function Payment({ user, onLogout }: Props) {
           </div>
           <h2 className="text-3xl font-black text-white mb-4">Payment Submitted</h2>
           <p className="text-slate-400 mb-8 leading-relaxed">
-            Your payment of <span className="text-white font-bold">1500 BDT</span> has been submitted for verification. 
+            Your payment of <span className="text-white font-bold">1199 BDT</span> has been submitted for verification. 
             Please wait for admin approval.
           </p>
           <button
@@ -100,7 +100,7 @@ export default function Payment({ user, onLogout }: Props) {
           </div>
           <div className="text-right">
             <p className="text-slate-400 text-xs uppercase tracking-widest font-bold">Amount to Pay</p>
-            <p className="text-3xl font-black text-white">1500 BDT</p>
+            <p className="text-3xl font-black text-white">1199 BDT</p>
           </div>
         </div>
 
@@ -112,18 +112,18 @@ export default function Payment({ user, onLogout }: Props) {
               className="h-6"
               referrerPolicy="no-referrer"
             />
-            <span className="text-pink-500 font-bold text-lg">bKash Personal</span>
+            <span className="text-pink-500 font-bold text-lg">bKash Agent</span>
           </div>
           <div className="space-y-2">
-            <p className="text-slate-400 text-sm">Send Money to:</p>
-            <p className="text-2xl font-black text-white tracking-widest">01700000000</p>
+            <p className="text-slate-400 text-sm">Cash Out to:</p>
+            <p className="text-2xl font-black text-white tracking-widest">01890275123</p>
           </div>
         </div>
 
         <div className="bg-slate-800/50 p-4 rounded-xl mb-8 flex gap-3 items-start border border-white/5">
           <Info className="w-5 h-5 text-pink-400 shrink-0 mt-0.5" />
           <p className="text-slate-400 text-xs leading-relaxed">
-            Please send <span className="text-white font-bold">1500 BDT</span> to the number above via bKash Send Money. 
+            Please <span className="text-white font-bold">Cash Out 1199 BDT</span> to the number above via bKash. 
             Then enter your payment number and Transaction ID below.
           </p>
         </div>
