@@ -3,13 +3,14 @@ import { motion } from 'motion/react';
 import { doc, setDoc, addDoc, collection } from 'firebase/firestore';
 import { db } from '../firebase';
 import { User, Transaction } from '../types';
-import { CreditCard, Wallet, CheckCircle2, Loader2, Info } from 'lucide-react';
+import { CreditCard, Wallet, CheckCircle2, Loader2, Info, LogOut } from 'lucide-react';
 
 interface Props {
   user: User;
+  onLogout: () => void;
 }
 
-export default function Payment({ user }: Props) {
+export default function Payment({ user, onLogout }: Props) {
   const [transactionId, setTransactionId] = useState('');
   const [paymentNumber, setPaymentNumber] = useState('');
   const [loading, setLoading] = useState(false);
@@ -47,7 +48,13 @@ export default function Payment({ user }: Props) {
         animate={{ opacity: 1, scale: 1 }}
         className="min-h-screen flex items-center justify-center p-6 bg-slate-950"
       >
-        <div className="bg-slate-900/40 backdrop-blur-xl p-10 rounded-3xl shadow-2xl max-w-md w-full border border-white/10 text-center">
+        <div className="bg-slate-900/40 backdrop-blur-xl p-10 rounded-3xl shadow-2xl max-w-md w-full border border-white/10 text-center relative">
+          <button 
+            onClick={onLogout}
+            className="absolute top-6 right-6 w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center border border-white/5 hover:bg-red-600/20 transition-colors"
+          >
+            <LogOut className="w-5 h-5 text-slate-400" />
+          </button>
           <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle2 className="w-12 h-12 text-green-500" />
           </div>
@@ -81,6 +88,12 @@ export default function Payment({ user }: Props) {
         layout
         className="bg-slate-900/40 backdrop-blur-xl p-8 rounded-3xl shadow-2xl max-w-md w-full border border-white/10 relative z-10"
       >
+        <button 
+          onClick={onLogout}
+          className="absolute top-4 right-4 w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center border border-white/5 hover:bg-red-600/20 transition-colors z-20"
+        >
+          <LogOut className="w-5 h-5 text-slate-400" />
+        </button>
         <div className="flex items-center justify-between mb-8">
           <div className="w-12 h-12 bg-pink-600 rounded-xl flex items-center justify-center shadow-lg shadow-pink-600/20">
             <Wallet className="w-6 h-6 text-white" />

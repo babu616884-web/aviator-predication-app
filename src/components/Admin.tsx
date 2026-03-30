@@ -14,7 +14,7 @@ import {
   where
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { User, Transaction, VIPSignal, Notice } from '../types';
+import { User, Transaction, VIPSignal, Notice, SupportChat, SupportMessage } from '../types';
 import { 
   LayoutDashboard, 
   Users, 
@@ -29,14 +29,16 @@ import {
   Trash2,
   Send,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  MessageSquare,
+  User as UserIcon
 } from 'lucide-react';
 
 interface Props {
   onLogout: () => void;
 }
 
-type AdminTab = 'dashboard' | 'users' | 'transactions' | 'signals' | 'notices';
+type AdminTab = 'dashboard' | 'users' | 'transactions' | 'signals' | 'notices' | 'support';
 
 export default function Admin({ onLogout }: Props) {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
@@ -44,6 +46,10 @@ export default function Admin({ onLogout }: Props) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [signals, setSignals] = useState<VIPSignal[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
+  const [supportChats, setSupportChats] = useState<SupportChat[]>([]);
+  const [selectedChat, setSelectedChat] = useState<SupportChat | null>(null);
+  const [chatMessages, setChatMessages] = useState<SupportMessage[]>([]);
+  const [adminReply, setAdminReply] = useState('');
   const [loading, setLoading] = useState(true);
 
   // Form states
@@ -75,13 +81,60 @@ export default function Admin({ onLogout }: Props) {
       console.error("Admin notices snapshot error:", error);
     });
 
+    const unsubSupport = onSnapshot(query(collection(db, 'support_chats'), orderBy('lastTimestamp', 'desc')), (snapshot) => {
+      setSupportChats(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SupportChat)));
+    }, (error) => {
+      console.error("Admin support chats snapshot error:", error);
+    });
+
     return () => {
       unsubUsers();
       unsubTx();
       unsubSignals();
       unsubNotices();
+      unsubSupport();
     };
   }, []);
+
+  useEffect(() => {
+    if (selectedChat) {
+      const q = query(collection(db, 'support_chats', selectedChat.userId, 'messages'), orderBy('timestamp', 'asc'));
+      const unsubMessages = onSnapshot(q, (snapshot) => {
+        setChatMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SupportMessage)));
+        // Reset unread count when admin views
+        if (selectedChat.unreadCount > 0) {
+          updateDoc(doc(db, 'support_chats', selectedChat.userId), { unreadCount: 0 });
+        }
+      });
+      return () => unsubMessages();
+    } else {
+      setChatMessages([]);
+    }
+  }, [selectedChat]);
+
+  const handleSendAdminReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminReply.trim() || !selectedChat) return;
+
+    const text = adminReply.trim();
+    setAdminReply('');
+
+    try {
+      await addDoc(collection(db, 'support_chats', selectedChat.userId, 'messages'), {
+        text,
+        senderId: 'admin',
+        timestamp: new Date().toISOString(),
+        isAdmin: true
+      });
+
+      await updateDoc(doc(db, 'support_chats', selectedChat.userId), {
+        lastMessage: text,
+        lastTimestamp: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handleApproveTx = async (tx: Transaction) => {
     try {
@@ -152,6 +205,7 @@ export default function Admin({ onLogout }: Props) {
     { id: 'transactions', label: 'Payments', icon: CreditCard },
     { id: 'signals', label: 'VIP Signals', icon: Zap },
     { id: 'notices', label: 'Notices', icon: Bell },
+    { id: 'support', label: 'Support', icon: MessageSquare },
   ];
 
   return (
@@ -406,6 +460,101 @@ export default function Admin({ onLogout }: Props) {
                       </button>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'support' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-12rem)]">
+                {/* Chat List */}
+                <div className="bg-slate-900/40 rounded-3xl border border-white/5 overflow-hidden flex flex-col">
+                  <div className="p-6 border-b border-white/5 bg-white/5">
+                    <h2 className="text-xl font-black text-white">Support Chats</h2>
+                  </div>
+                  <div className="flex-1 overflow-y-auto divide-y divide-white/5">
+                    {supportChats.length === 0 ? (
+                      <div className="p-10 text-center text-slate-500">
+                        <MessageSquare className="w-10 h-10 mx-auto mb-4 opacity-20" />
+                        <p className="text-sm font-bold uppercase tracking-widest">No Active Chats</p>
+                      </div>
+                    ) : (
+                      supportChats.map(chat => (
+                        <button
+                          key={chat.id}
+                          onClick={() => setSelectedChat(chat)}
+                          className={`w-full p-4 flex items-center gap-4 hover:bg-white/5 transition-all text-left ${selectedChat?.id === chat.id ? 'bg-white/5' : ''}`}
+                        >
+                          <div className="relative">
+                            <img src={chat.userPhoto} className="w-12 h-12 rounded-xl" referrerPolicy="no-referrer" />
+                            {chat.unreadCount > 0 && (
+                              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-slate-900">
+                                {chat.unreadCount}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="text-white font-bold truncate">{chat.userName}</p>
+                              <p className="text-[9px] text-slate-500 font-bold uppercase">{new Date(chat.lastTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                            </div>
+                            <p className="text-xs text-slate-400 truncate mt-0.5">{chat.lastMessage}</p>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Chat Window */}
+                <div className="lg:col-span-2 bg-slate-900/40 rounded-3xl border border-white/5 overflow-hidden flex flex-col">
+                  {selectedChat ? (
+                    <>
+                      <div className="p-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <img src={selectedChat.userPhoto} className="w-10 h-10 rounded-xl" referrerPolicy="no-referrer" />
+                          <div>
+                            <h3 className="text-sm font-black text-white uppercase tracking-wider">{selectedChat.userName}</h3>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">User ID: {selectedChat.userId}</p>
+                          </div>
+                        </div>
+                        <button onClick={() => setSelectedChat(null)} className="lg:hidden text-slate-500 hover:text-white">
+                          <XCircle className="w-6 h-6" />
+                        </button>
+                      </div>
+
+                      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                        {chatMessages.map(msg => (
+                          <div key={msg.id} className={`flex ${msg.isAdmin ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`max-w-[80%] p-4 rounded-2xl text-sm ${msg.isAdmin ? 'bg-red-600 text-white rounded-tr-none' : 'bg-slate-800 text-white rounded-tl-none'}`}>
+                              <p>{msg.text}</p>
+                              <p className="text-[9px] opacity-50 mt-1 font-bold uppercase">{new Date(msg.timestamp).toLocaleTimeString()}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <form onSubmit={handleSendAdminReply} className="p-4 bg-white/5 border-t border-white/5 flex gap-3">
+                        <input
+                          type="text"
+                          value={adminReply}
+                          onChange={e => setAdminReply(e.target.value)}
+                          placeholder="Type your reply..."
+                          className="flex-1 bg-slate-800 border border-white/5 rounded-xl p-4 text-white focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                        />
+                        <button className="bg-red-600 text-white p-4 rounded-xl font-bold hover:bg-red-500 transition-all">
+                          <Send className="w-5 h-5" />
+                        </button>
+                      </form>
+                    </>
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-10">
+                      <div className="w-20 h-20 bg-slate-800 rounded-3xl flex items-center justify-center mb-6">
+                        <MessageSquare className="w-10 h-10 text-slate-500" />
+                      </div>
+                      <h3 className="text-xl font-black text-white mb-2 uppercase tracking-widest">Select a Conversation</h3>
+                      <p className="text-slate-500 text-sm max-w-xs">Choose a chat from the list to start helping our users.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

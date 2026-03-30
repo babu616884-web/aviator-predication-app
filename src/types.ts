@@ -44,6 +44,24 @@ export interface Stats {
   totalUsers: number;
 }
 
+export interface SupportChat {
+  id: string;
+  userId: string;
+  userName: string;
+  userPhoto: string;
+  lastMessage: string;
+  lastTimestamp: string;
+  unreadCount: number;
+}
+
+export interface SupportMessage {
+  id: string;
+  text: string;
+  senderId: string;
+  timestamp: string;
+  isAdmin: boolean;
+}
+
 export enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',

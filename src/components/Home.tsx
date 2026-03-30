@@ -6,6 +6,7 @@ import TransactionHistory from './TransactionHistory';
 import Prediction from './Prediction';
 import VIPPrediction from './VIPPrediction';
 import LiveStatus from './LiveStatus';
+import SupportChat from './SupportChat';
 import { 
   User as UserIcon, 
   History, 
@@ -15,7 +16,8 @@ import {
   LogOut, 
   Menu, 
   X,
-  ChevronRight
+  ChevronRight,
+  MessageSquare
 } from 'lucide-react';
 
 interface Props {
@@ -23,7 +25,7 @@ interface Props {
   onLogout: () => void;
 }
 
-type Tab = 'profile' | 'transaction' | 'prediction' | 'vip' | 'live';
+type Tab = 'profile' | 'transaction' | 'prediction' | 'vip' | 'live' | 'support';
 
 export default function Home({ user, onLogout }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('prediction');
@@ -35,6 +37,7 @@ export default function Home({ user, onLogout }: Props) {
     { id: 'prediction', label: 'Prediction', icon: Zap, color: 'red' },
     { id: 'vip', label: 'VIP', icon: Crown, color: 'yellow' },
     { id: 'live', label: 'Live', icon: Activity, color: 'green' },
+    { id: 'support', label: 'Support', icon: MessageSquare, color: 'pink' },
   ];
 
   const renderContent = () => {
@@ -44,6 +47,7 @@ export default function Home({ user, onLogout }: Props) {
       case 'prediction': return <Prediction user={user} />;
       case 'vip': return <VIPPrediction user={user} />;
       case 'live': return <LiveStatus />;
+      case 'support': return <SupportChat user={user} />;
       default: return null;
     }
   };

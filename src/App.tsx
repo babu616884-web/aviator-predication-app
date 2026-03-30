@@ -98,7 +98,7 @@ export default function App() {
         )}
         {view === 'payment' && (
           <motion.div key="payment" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <Payment user={user!} />
+            <Payment user={user!} onLogout={() => auth.signOut()} />
           </motion.div>
         )}
         {view === 'home' && (

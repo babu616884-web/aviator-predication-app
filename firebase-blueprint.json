@@ -65,6 +65,34 @@
         "totalIncome": { "type": "number" },
         "totalUsers": { "type": "number" }
       }
+    },
+    "SupportChat": {
+      "title": "Support Chat Session",
+      "description": "A chat session between a user and support admin.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "lastMessage": { "type": "string" },
+        "lastTimestamp": { "type": "string", "format": "date-time" },
+        "unreadCount": { "type": "number" }
+      },
+      "required": ["userId", "userName", "lastMessage", "lastTimestamp", "unreadCount"]
+    },
+    "SupportMessage": {
+      "title": "Support Message",
+      "description": "A single message in a support chat.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "senderId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "isAdmin": { "type": "boolean" }
+      },
+      "required": ["text", "senderId", "timestamp", "isAdmin"]
     }
   },
   "firestore": {
@@ -87,6 +115,14 @@
     "/stats/global": {
       "schema": "Stats",
       "description": "Global statistics."
+    },
+    "/support_chats/{userId}": {
+      "schema": "SupportChat",
+      "description": "Support chat sessions."
+    },
+    "/support_chats/{userId}/messages/{messageId}": {
+      "schema": "SupportMessage",
+      "description": "Messages within a support chat."
     }
   }
 }

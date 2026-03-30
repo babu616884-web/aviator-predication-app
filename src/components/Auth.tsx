@@ -3,30 +3,86 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
-  updateProfile 
+  updateProfile,
+  signInWithPopup,
+  GoogleAuthProvider,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { User, UserRole, UserStatus } from '../types';
-import { Mail, Lock, User as UserIcon, Phone, ArrowRight, Loader2 } from 'lucide-react';
+import { Mail, Lock, User as UserIcon, Phone, ArrowRight, Loader2, Chrome, HelpCircle } from 'lucide-react';
 
 interface Props {
   onAuthSuccess: () => void;
 }
 
 export default function Auth({ onAuthSuccess }: Props) {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setMessage('');
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setMessage('Password reset link sent to your email!');
+      setTimeout(() => setMode('login'), 3000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError('');
+    setMessage('');
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const fbUser = result.user;
+      
+      const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
+      if (!userDoc.exists()) {
+        const newUser: User = {
+          uid: fbUser.uid,
+          name: fbUser.displayName || 'User',
+          email: fbUser.email || '',
+          phone: fbUser.phoneNumber || '',
+          photoURL: fbUser.photoURL || `https://picsum.photos/seed/${fbUser.uid}/200/200`,
+          status: fbUser.email === 'Ashik@avator.com' ? 'active' : 'inactive',
+          role: fbUser.email === 'Ashik@avator.com' ? 'admin' : 'user',
+          createdAt: new Date().toISOString(),
+        };
+        await setDoc(doc(db, 'users', fbUser.uid), newUser);
+      }
+      onAuthSuccess();
+    } catch (err: any) {
+      if (err.code === 'auth/network-request-failed') {
+        setError('Network error! Please check your internet or disable ad-blockers.');
+      } else {
+        setError(err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setMessage('');
 
     try {
       if (mode === 'register') {
@@ -52,7 +108,11 @@ export default function Auth({ onAuthSuccess }: Props) {
       }
       onAuthSuccess();
     } catch (err: any) {
-      setError(err.message);
+      if (err.code === 'auth/network-request-failed') {
+        setError('Network error! Please check your internet or disable ad-blockers.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -77,10 +137,10 @@ export default function Auth({ onAuthSuccess }: Props) {
             <span className="text-3xl font-black">A</span>
           </div>
           <h2 className="text-3xl font-black tracking-tight text-white mb-2">
-            {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+            {mode === 'login' ? 'Welcome Back' : mode === 'register' ? 'Create Account' : 'Reset Password'}
           </h2>
           <p className="text-slate-400 text-sm">
-            {mode === 'login' ? 'Login to access your predictions' : 'Join the elite prediction community'}
+            {mode === 'login' ? 'Login to access your predictions' : mode === 'register' ? 'Join the elite prediction community' : 'Enter your email to reset password'}
           </p>
         </div>
 
@@ -94,7 +154,17 @@ export default function Auth({ onAuthSuccess }: Props) {
           </motion.div>
         )}
 
-        <form onSubmit={handleAuth} className="space-y-4">
+        {message && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-green-500/10 border border-green-500/20 text-green-400 p-4 rounded-xl text-sm mb-6"
+          >
+            {message}
+          </motion.div>
+        )}
+
+        <form onSubmit={mode === 'forgot' ? handleResetPassword : handleAuth} className="space-y-4">
           <AnimatePresence mode="popLayout">
             {mode === 'register' && (
               <motion.div
@@ -142,17 +212,32 @@ export default function Auth({ onAuthSuccess }: Props) {
             />
           </div>
 
-          <div className="relative group">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-red-500 transition-colors" />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full bg-slate-800/50 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all"
-            />
-          </div>
+          {mode !== 'forgot' && (
+            <div className="relative group">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-red-500 transition-colors" />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full bg-slate-800/50 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all"
+              />
+            </div>
+          )}
+
+          {mode === 'login' && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setMode('forgot')}
+                className="text-[10px] font-black uppercase text-slate-500 hover:text-red-500 transition-colors flex items-center gap-1"
+              >
+                <HelpCircle className="w-3 h-3" />
+                Forgot Password?
+              </button>
+            </div>
+          )}
 
           <button
             type="submit"
@@ -163,21 +248,44 @@ export default function Auth({ onAuthSuccess }: Props) {
               <Loader2 className="w-6 h-6 animate-spin" />
             ) : (
               <>
-                {mode === 'login' ? 'Sign In' : 'Create Account'}
+                {mode === 'login' ? 'Sign In' : mode === 'register' ? 'Create Account' : 'Send Reset Link'}
                 <ArrowRight className="w-5 h-5" />
               </>
             )}
           </button>
+
+          {mode !== 'forgot' && (
+            <>
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-white/5"></div>
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-slate-900/40 px-2 text-slate-500 font-bold">Or continue with</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={loading}
+                className="w-full bg-white/5 border border-white/10 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-white/10 transition-all disabled:opacity-50"
+              >
+                <Chrome className="w-5 h-5 text-red-500" />
+                Google Login
+              </button>
+            </>
+          )}
         </form>
 
         <div className="mt-8 text-center">
           <p className="text-slate-400 text-sm">
-            {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
+            {mode === 'login' ? "Don't have an account?" : mode === 'register' ? 'Already have an account?' : 'Remember your password?'}
             <button
               onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
               className="ml-2 text-red-500 font-bold hover:text-red-400 transition-colors"
             >
-              {mode === 'login' ? 'Register Now' : 'Login Here'}
+              {mode === 'login' ? 'Register Now' : mode === 'register' ? 'Login Here' : 'Back to Login'}
             </button>
           </p>
         </div>
