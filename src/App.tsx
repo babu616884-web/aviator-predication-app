@@ -25,7 +25,7 @@ export default function App() {
         if (userDoc.exists()) {
           const userData = userDoc.data() as User;
           setUser(userData);
-          if (userData.role === 'admin' && fbUser.email === 'Ashik@avator.com') {
+          if (userData.role === 'admin' && fbUser.email === 'mahamudurrahman778@gmail.com') {
             setView('admin');
           } else if (userData.status === 'inactive') {
             setView('payment');
@@ -52,8 +52,21 @@ export default function App() {
         if (snapshot.exists()) {
           const userData = snapshot.data() as User;
           setUser(userData);
-          if (userData.status === 'active' && view === 'payment') {
-            setView('home');
+          
+          // Determine correct view based on user data
+          let targetView: 'home' | 'admin' | 'payment' = 'home';
+          if (userData.role === 'admin' && firebaseUser.email === 'mahamudurrahman778@gmail.com') {
+            targetView = 'admin';
+          } else if (userData.status === 'inactive') {
+            targetView = 'payment';
+          }
+
+          // Only update view if it's a necessary transition (e.g. from auth/payment/splash)
+          // or if the status changed while in home/admin
+          if (view === 'auth' || view === 'payment' || view === 'splash' || 
+              (view === 'home' && targetView === 'payment') ||
+              (view === 'payment' && targetView === 'home')) {
+            setView(targetView);
           }
         }
       }, (error) => {
@@ -103,12 +116,19 @@ export default function App() {
         )}
         {view === 'home' && (
           <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <Home user={user!} onLogout={() => auth.signOut()} />
+            <Home 
+              user={user!} 
+              onLogout={() => auth.signOut()} 
+              onSwitchToAdmin={user?.role === 'admin' ? () => setView('admin') : undefined}
+            />
           </motion.div>
         )}
         {view === 'admin' && (
           <motion.div key="admin" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <Admin onLogout={() => auth.signOut()} />
+            <Admin 
+              onLogout={() => auth.signOut()} 
+              onSwitchToUser={() => setView('home')}
+            />
           </motion.div>
         )}
       </AnimatePresence>

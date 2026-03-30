@@ -9,8 +9,8 @@ import {
   sendPasswordResetEmail
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
-import { User, UserRole, UserStatus } from '../types';
+import { auth, db, handleFirestoreError } from '../firebase';
+import { User, UserRole, UserStatus, OperationType } from '../types';
 import { Mail, Lock, User as UserIcon, Phone, ArrowRight, Loader2, Chrome, HelpCircle } from 'lucide-react';
 
 interface Props {
@@ -60,16 +60,32 @@ export default function Auth({ onAuthSuccess }: Props) {
           email: fbUser.email || '',
           phone: fbUser.phoneNumber || '',
           photoURL: fbUser.photoURL || `https://picsum.photos/seed/${fbUser.uid}/200/200`,
-          status: fbUser.email === 'Ashik@avator.com' ? 'active' : 'inactive',
-          role: fbUser.email === 'Ashik@avator.com' ? 'admin' : 'user',
+          status: fbUser.email === 'mahamudurrahman778@gmail.com' ? 'active' : 'inactive',
+          role: fbUser.email === 'mahamudurrahman778@gmail.com' ? 'admin' : 'user',
           createdAt: new Date().toISOString(),
         };
-        await setDoc(doc(db, 'users', fbUser.uid), newUser);
+        try {
+          await setDoc(doc(db, 'users', fbUser.uid), newUser);
+        } catch (err) {
+          handleFirestoreError(err, OperationType.WRITE, `users/${fbUser.uid}`);
+        }
+      } else {
+        // If user exists, but it's the admin email, ensure role is admin
+        const userData = userDoc.data() as User;
+        if (fbUser.email === 'mahamudurrahman778@gmail.com' && userData.role !== 'admin') {
+          try {
+            await setDoc(doc(db, 'users', fbUser.uid), { ...userData, role: 'admin', status: 'active' });
+          } catch (err) {
+            handleFirestoreError(err, OperationType.WRITE, `users/${fbUser.uid}`);
+          }
+        }
       }
       onAuthSuccess();
     } catch (err: any) {
       if (err.code === 'auth/network-request-failed') {
         setError('Network error! Please check your internet or disable ad-blockers.');
+      } else if (err.code === 'auth/invalid-credential') {
+        setError('Invalid login. If you haven\'t registered yet, please use the "Register Now" link below.');
       } else {
         setError(err.message);
       }
@@ -97,19 +113,45 @@ export default function Auth({ onAuthSuccess }: Props) {
           email,
           phone,
           photoURL: `https://picsum.photos/seed/${fbUser.uid}/200/200`,
-          status: email === 'Ashik@avator.com' ? 'active' : 'inactive',
-          role: email === 'Ashik@avator.com' ? 'admin' : 'user',
+          status: email === 'mahamudurrahman778@gmail.com' ? 'active' : 'inactive',
+          role: email === 'mahamudurrahman778@gmail.com' ? 'admin' : 'user',
           createdAt: new Date().toISOString(),
         };
         
-        await setDoc(doc(db, 'users', fbUser.uid), newUser);
+        try {
+          await setDoc(doc(db, 'users', fbUser.uid), newUser);
+        } catch (err) {
+          handleFirestoreError(err, OperationType.WRITE, `users/${fbUser.uid}`);
+        }
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const fbUser = userCredential.user;
+        
+        // Ensure admin role is set if it's the admin email
+        if (fbUser.email === 'mahamudurrahman778@gmail.com') {
+          const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data() as User;
+            if (userData.role !== 'admin') {
+              try {
+                await setDoc(doc(db, 'users', fbUser.uid), { ...userData, role: 'admin', status: 'active' });
+              } catch (err) {
+                handleFirestoreError(err, OperationType.WRITE, `users/${fbUser.uid}`);
+              }
+            }
+          }
+        }
       }
       onAuthSuccess();
     } catch (err: any) {
       if (err.code === 'auth/network-request-failed') {
         setError('Network error! Please check your internet or disable ad-blockers.');
+      } else if (err.code === 'auth/invalid-credential') {
+        setError('Invalid login. If you haven\'t registered yet, please use the "Register Now" link below.');
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError('This email is already registered. Please try to Login instead.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Password should be at least 6 characters long.');
       } else {
         setError(err.message);
       }

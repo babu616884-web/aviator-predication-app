@@ -23,11 +23,12 @@ import {
 interface Props {
   user: User;
   onLogout: () => void;
+  onSwitchToAdmin?: () => void;
 }
 
 type Tab = 'profile' | 'transaction' | 'prediction' | 'vip' | 'live' | 'support';
 
-export default function Home({ user, onLogout }: Props) {
+export default function Home({ user, onLogout, onSwitchToAdmin }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('prediction');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -67,6 +68,14 @@ export default function Home({ user, onLogout }: Props) {
         </div>
         
         <div className="flex items-center gap-4">
+          {onSwitchToAdmin && (
+            <button 
+              onClick={onSwitchToAdmin}
+              className="hidden sm:flex items-center gap-2 bg-red-600/10 text-red-500 px-4 py-2 rounded-xl border border-red-600/20 hover:bg-red-600/20 transition-all font-bold text-[10px] uppercase tracking-widest"
+            >
+              <Crown className="w-3 h-3" /> Admin Panel
+            </button>
+          )}
           <div className="text-right hidden sm:block">
             <p className="text-xs text-slate-400 font-bold">{user.name}</p>
             <p className={`text-[10px] font-black uppercase ${user.status === 'active' ? 'text-green-500' : 'text-red-500'}`}>

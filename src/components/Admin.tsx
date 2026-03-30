@@ -36,11 +36,12 @@ import {
 
 interface Props {
   onLogout: () => void;
+  onSwitchToUser?: () => void;
 }
 
 type AdminTab = 'dashboard' | 'users' | 'transactions' | 'signals' | 'notices' | 'support';
 
-export default function Admin({ onLogout }: Props) {
+export default function Admin({ onLogout, onSwitchToUser }: Props) {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [users, setUsers] = useState<User[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -220,6 +221,15 @@ export default function Admin({ onLogout }: Props) {
         </div>
 
         <nav className="flex-1 flex flex-col gap-2">
+          {onSwitchToUser && (
+            <button 
+              onClick={onSwitchToUser}
+              className="flex items-center gap-3 p-4 rounded-2xl font-bold text-sm text-yellow-500 hover:bg-yellow-500/10 transition-all mb-4 border border-yellow-500/20"
+            >
+              <Zap className="w-5 h-5" />
+              Switch to User View
+            </button>
+          )}
           {navItems.map(item => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
