@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "mdrumanhossainbabu@gmail.com" && request.auth.token.email_verified == true) ||
+         (request.auth.token.email == "Ashik@avator.com"));
+    }
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'name', 'status', 'role']) &&
+             data.uid is string && data.email is string && data.name is string &&
+             data.status in ['active', 'inactive'] &&
+             data.role in ['user', 'admin'];
+    }
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['uid', 'amount', 'transactionId', 'paymentNumber', 'status']) &&
+             data.uid is string && data.amount is number && data.transactionId is string &&
+             data.paymentNumber is string && data.status in ['pending', 'success', 'declined'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{uid} {
+      allow read: if isAuthenticated() && (isOwner(uid) || isAdmin());
+      allow create: if isAuthenticated() && isOwner(uid) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
+      allow update: if isAuthenticated() && (
+        (isOwner(uid) && request.resource.data.role == resource.data.role && isValidUser(request.resource.data)) ||
+        isAdmin()
+      );
+    }
+
+    match /transactions/{id} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.uid || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.uid && isValidTransaction(request.resource.data);
+      allow update: if isAdmin();
+    }
+
+    match /vip_signals/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /notices/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /stats/global {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}

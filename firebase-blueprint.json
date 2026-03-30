@@ -1,0 +1,92 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile information including status and role.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "name", "status", "role"]
+    },
+    "Transaction": {
+      "title": "Payment Transaction",
+      "description": "Payment transaction details for bKash.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "uid": { "type": "string" },
+        "amount": { "type": "number" },
+        "transactionId": { "type": "string" },
+        "paymentNumber": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "success", "declined"] },
+        "reason": { "type": "string" }
+      },
+      "required": ["uid", "amount", "transactionId", "paymentNumber", "status"]
+    },
+    "VIPSignal": {
+      "title": "VIP Prediction Signal",
+      "description": "VIP signals set by admin.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "value": { "type": "string" },
+        "time": { "type": "string" },
+        "date": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["value", "time", "date"]
+    },
+    "Notice": {
+      "title": "Admin Notice",
+      "description": "Urgent notices for users.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "message": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["message", "active"]
+    },
+    "Stats": {
+      "title": "Live Statistics",
+      "description": "Real-time user and income stats.",
+      "type": "object",
+      "properties": {
+        "totalIncome": { "type": "number" },
+        "totalUsers": { "type": "number" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User profiles."
+    },
+    "/transactions/{id}": {
+      "schema": "Transaction",
+      "description": "Payment transactions."
+    },
+    "/vip_signals/{id}": {
+      "schema": "VIPSignal",
+      "description": "VIP prediction signals."
+    },
+    "/notices/{id}": {
+      "schema": "Notice",
+      "description": "Admin notices."
+    },
+    "/stats/global": {
+      "schema": "Stats",
+      "description": "Global statistics."
+    }
+  }
+}
